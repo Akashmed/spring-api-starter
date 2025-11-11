@@ -60,7 +60,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserDto> updateUser(
-            @PathVariable Long id,
+            @PathVariable(name = "id") Long id,
             @RequestBody UpdateUserRequest request
     ) {
         var user = userRepository.findById(id).orElse(null);
@@ -70,5 +70,15 @@ public class UserController {
         userMapper.update(request, user);
         userRepository.save(user);
         return ResponseEntity.ok(userMapper.toDto(user));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable(name = "id") Long id){
+        var user = userRepository.findById(id).orElse(null);
+        if(user == null)
+            return ResponseEntity.notFound().build();
+
+        userRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }
