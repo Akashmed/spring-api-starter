@@ -50,7 +50,7 @@ public class CartController {
         var product = productRepository.findById(request.getProductId()).orElse(null);
         if (product == null) return ResponseEntity.badRequest().build();
 
-        var cartItem = cart.getCartItems().stream()
+        var cartItem = cart.getItems().stream()
                 .filter(item -> item.getProduct().getId().equals(product.getId())).findFirst().orElse(null);
 
         if (cartItem != null) {
@@ -60,11 +60,20 @@ public class CartController {
             cartItem.setProduct(product);
             cartItem.setQuantity(1);
             cartItem.setCart(cart);
-            cart.getCartItems().add(cartItem);
+            cart.getItems().add(cartItem);
         }
 
         cartRepository.save(cart);
         var cartItemdto = cartMapper.toDto(cartItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(cartItemdto);
+    }
+
+    @GetMapping("/{cartId}")
+    public ResponseEntity<CartDto> getCart(@PathVariable UUID cartId){
+        var cart = cartRepository.getCartWithItems(cartId).orElse(null);
+        if(cart == null) return ResponseEntity.notFound().build();
+
+        var cartDto = cartMapper.toDto(cart);
+        return ResponseEntity.ok(cartDto);
     }
 }
