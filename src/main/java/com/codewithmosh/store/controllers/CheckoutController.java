@@ -16,6 +16,7 @@ import com.codewithmosh.store.services.CartService;
 import com.codewithmosh.store.services.CheckoutService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
 import com.stripe.net.Webhook;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -32,6 +33,7 @@ import java.util.Map;
 @RequestMapping("/checkout")
 public class CheckoutController {
     private final CheckoutService checkoutService;
+    private final OrderRepository orderRepository;
 
     @Value("${stripe.webhookSecretKey}")
     private String webhookSecretKey;
@@ -44,38 +46,47 @@ public class CheckoutController {
 
     @PostMapping("/webhook")
     public ResponseEntity<Void> handleWebhook(
-           @RequestHeader("Stripe-Signature") String signature,
-           @RequestBody String payload
-    ){
+            @RequestHeader("Stripe-Signature") String signature,
+            @RequestBody String payload
+    ) {
         try {
             var event = Webhook.constructEvent(payload, signature, webhookSecretKey);
             System.out.println(event.getType());
-           var stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+            var stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
 
-           switch (event.getType()){
-               case "payment_intent.succeeded" -> {
+            switch (event.getType()) {
+                case "payment_intent.succeeded" -> {
                     //update order status (paid)
-               }
-               case "payment_intent.failed" -> {
+                    var paymentIntent = (PaymentIntent) stripeObject;
+                    if (paymentIntent != null) {
+                        var orderId = paymentIntent.getMetadata().get("orderId");
+                        System.out.println("order id "+ orderId);
+                        var order = orderRepository.findById(Long.valueOf(orderId)).orElseThrow();
+                        System.out.println("came here "+ order.getId());
+                        order.setStatus(OrderStatus.PAID);
+                        orderRepository.save(order);
+                    }
+                }
+                case "payment_intent.failed" -> {
                     //update order status (failed)
-               }
-           }
+                }
+            }
 
-           return ResponseEntity.ok().build();
+            return ResponseEntity.ok().build();
         } catch (SignatureVerificationException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     @ExceptionHandler(PaymentException.class)
-    public ResponseEntity<?> handlePaymentException(){
+    public ResponseEntity<?> handlePaymentException() {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorDto("Error creating checkout session"));
     }
 
     @ExceptionHandler({CartNotFoundException.class, CartEmptyException.class})
-    public ResponseEntity<ErrorDto> handleException(Exception ex){
+    public ResponseEntity<ErrorDto> handleException(Exception ex) {
         return ResponseEntity.badRequest().body(new ErrorDto(ex.getMessage()));
     }
 }

@@ -12,17 +12,18 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 
 @Service
-public class StripePaymentGateway implements PaymentGateway{
+public class StripePaymentGateway implements PaymentGateway {
     @Value("${websiteUrl}")
     private String websiteUrl;
 
     @Override
     public CheckoutSession createCheckoutSession(Order order) {
-        try{
+        try {
             var builder = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setSuccessUrl(websiteUrl + "/checkout-success?orderId=" + order.getId())
-                    .setCancelUrl(websiteUrl + "/checkout-cancel.html");
+                    .setCancelUrl(websiteUrl + "/checkout-cancel.html")
+                    .putMetadata("order_id", order.getId().toString());
 
             order.getItems().forEach(item -> {
                 var lineItem = createLineItem(item);
@@ -32,7 +33,7 @@ public class StripePaymentGateway implements PaymentGateway{
 
             var session = Session.create(builder.build());
             return new CheckoutSession(session.getUrl());
-        }catch (StripeException ex){
+        } catch (StripeException ex) {
             System.out.println(ex.getMessage());
             throw new PaymentException();
         }
