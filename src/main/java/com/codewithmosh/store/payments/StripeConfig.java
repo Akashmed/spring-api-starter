@@ -1,4 +1,4 @@
-package com.codewithmosh.store.config;
+package com.codewithmosh.store.payments;
 
 import com.stripe.Stripe;
 import jakarta.annotation.PostConstruct;
@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class stripeConfig {
+public class StripeConfig {
     @Value("${stripe.secretKey}")
     private String secretKey;
 
